@@ -2,9 +2,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/types.h>
+#include <sys/msg.h>
 
-int KA = 70;
-int KB = 221;
+int sharedKeys[] = {70, 45, 122, 60, 401};
+int running = 1;
 
 void *ClientA(){
 
@@ -15,7 +18,26 @@ void *ClientB(){
 }
 
 void *KDC(){
+    int msqid = msgget(1234, 0600 | IPC_CREAT);
+    int msgp;
 
+    while(running == 1){
+        //wait for message from the first process
+        msgrcv(msqid, &msgp, sizeof(msgp) - sizeof(long), 0, IPC_NOWAIT);
+
+        //generate a random session key
+        int sessionKey = rand();
+        
+        //get the shared keys fo the two processes (fix this later)
+        int shKeyA = sharedKeys[msgp];
+        int shKeyB = sharedKeys[msgp];
+
+        //encrypt the session keys with the shared keys
+        int eKeyA = sessionKey ^ shKeyA;
+        int eKeyB = sessionKey ^ shKeyB;
+
+        msgsnd(msqid, &msgp, sizeof(msgp)-sizeof(long), IPC_NOWAIT);
+    }
 }
 
 int main(int argc, char *argv[]){
