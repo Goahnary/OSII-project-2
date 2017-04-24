@@ -16,75 +16,85 @@ struct msg {
 
 //the process for client A
 void *ClientA(void* params){
-    printf("wefwefwf2");
-    //open the mailbox
+    int sharedKey = 70;
+
+    //open the mailboxes
     int msqidA = msgget(16777217, 0600 | IPC_CREAT);
     int msqidKDC = msgget(16777216, 0600 | IPC_CREAT);
     int msqidB = msgget(16777218, 0600 | IPC_CREAT);
     struct msg msgp;
 
+    //set the message data (type, A id, B id)
     msgp.mtype = 0;
     msgp.mdata[0] = 0;
     msgp.mdata[1] = 3;
 
-    printf("\nbefore");
-    int stat = msgsnd(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 0);
-    printf("\n%d",errno);
+    //send ids to KDC and wait for reply
+    msgsnd(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 0);
+    msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
+    
+    int sessionKey = msgp.mdata[0] ^ sharedKey;
 
-    // msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0, IPC_NOWAIT);
-    printf("\nRecieved msg: %d", msgp.mdata[0]);
-    printf("\nSize of : %d", sizeof(msgp)-sizeof(long));
+    msgp.mdata[0] = msgp.mdata[1];
+    msgp.mdata[1] = 0;
+
+    msgsnd(msqidB, &msgp, sizeof(msgp)-sizeof(long), 0);
+    msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
+
+    if(msgp.mdata[0] == 0 && msgp.mdata[1] == 0){
+        printf("B confirms request.");
+    }
 
     pthread_exit(0);
 }
 
 //the process for client B
 void *ClientB(void* params){
-    int msqidB = msgget(16777218, 0600 | IPC_CREAT);
+    int sharedKey = 60;
 
-    printf("test");
+    int msqidB = msgget(16777218, 0600 | IPC_CREAT);
+    int msqidA = msgget(16777217, 0600 | IPC_CREAT);
+
+    struct msg msgp;    
+    msgrcv(msqidB, &msgp, sizeof(msgp) - sizeof(long), 0, 0);
+
+    int sessionKey = msgp.mdata[0] ^ sharedKey;
+
+    msgp.mdata[0] = 0;
+    msgp.mdata[1] = 0;
+
+    msgsnd(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0);
+
     pthread_exit(0);
 }
 
 //the process for the KDC
 void *KDC(void* params){
-    printf("wefwefwf3");
+    //open the mailboxes
     int msqidKDC = msgget(16777216, 0600 | IPC_CREAT);
     int msqidA = msgget(16777217, 0600 | IPC_CREAT);
     struct msg msgp;
 
-    printf("\nwkfjwenfwef");
+    //wait for message from the first process
+    msgrcv(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
 
-    msgrcv(2064406, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
+    //generate a random session key
+    int sessionKey = rand();
+    
+    //get the shared keys for the two processes
+    int shKeyA = sharedKeys[msgp.mdata[0]];
+    int shKeyB = sharedKeys[msgp.mdata[1]];
 
-    printf("\n%d", msgp.mdata[0]);
+    //encrypt the session key with the shared keys
+    int eKeyA = sessionKey ^ shKeyA;
+    int eKeyB = sessionKey ^ shKeyB;
 
-    msgp.mdata[0] = 27;
+    //update the message
+    msgp.mdata[0] = eKeyA;
+    msgp.mdata[1] = eKeyB;
 
-    msgsnd(msqidA, &msgp, sizeof(msgp)-sizeof(long), IPC_NOWAIT);
-
-    printf("wefwefwf4");
-
-    // while(running == 1){
-    //     //wait for message from the first process
-    //     msgrcv(msqid, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
-
-    //     //generate a random session key
-    //     int sessionKey = rand();
-        
-    //     //get the shared keys fo the two processes
-    //     int shKeyA = sharedKeys[msgp.mdata[0]];
-    //     int shKeyB = sharedKeys[msgp.mdata[1]];
-
-    //     printf("%d", shKeyA);
-    //     printf("%d", shKeyB);
-
-    //     //encrypt the session keys with the shared keys
-    //     int eKeyA = sessionKey ^ shKeyA;
-    //     int eKeyB = sessionKey ^ shKeyB;
-
-    //     msgsnd(msqid, &msgp, sizeof(msgp)-sizeof(long), 0);
-    // }
+    //send the keys to A
+    msgsnd(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0);
 
     pthread_exit(0);
 }
