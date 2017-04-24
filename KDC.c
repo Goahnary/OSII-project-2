@@ -27,15 +27,21 @@ void *ClientA(void* params){
     msgp.mdata[0] = 0;
     msgp.mdata[1] = 3;
 
-    msgsnd(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 0);
+    printf("\nbefore");
+    int stat = msgsnd(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 0);
+    printf("\n%d",errno);
 
-    msgrcv(msqidB, &msgp, sizeof(msgp)-sizeof(long), 0, IPC_NOWAIT);
+    // msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0, IPC_NOWAIT);
+    printf("\nRecieved msg: %d", msgp.mdata[0]);
+    printf("\nSize of : %d", sizeof(msgp)-sizeof(long));
 
     pthread_exit(0);
 }
 
 //the process for client B
 void *ClientB(void* params){
+    int msqidB = msgget(16777218, 0600 | IPC_CREAT);
+
     printf("test");
     pthread_exit(0);
 }
@@ -43,9 +49,19 @@ void *ClientB(void* params){
 //the process for the KDC
 void *KDC(void* params){
     printf("wefwefwf3");
-    int msqid = msgget(16777216, 0600 | IPC_CREAT);
+    int msqidKDC = msgget(16777216, 0600 | IPC_CREAT);
     int msqidA = msgget(16777217, 0600 | IPC_CREAT);
     struct msg msgp;
+
+    printf("\nwkfjwenfwef");
+
+    msgrcv(2064406, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
+
+    printf("\n%d", msgp.mdata[0]);
+
+    msgp.mdata[0] = 27;
+
+    msgsnd(msqidA, &msgp, sizeof(msgp)-sizeof(long), IPC_NOWAIT);
 
     printf("wefwefwf4");
 
