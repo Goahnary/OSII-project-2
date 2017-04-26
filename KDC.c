@@ -6,11 +6,8 @@
 #include <sys/types.h>
 #include <sys/msg.h>
 
-int sharedKeys[] = {70, 45, 122, 60, 401};
-int running = 1;
-
 struct msg {
-    long int mtype;
+    long mtype;
     int mdata[2];
 };
 
@@ -25,24 +22,26 @@ void *ClientA(void* params){
     struct msg msgp;
 
     //set the message data (type, A id, B id)
-    msgp.mtype = 0;
+    msgp.mtype = 1;
     msgp.mdata[0] = 0;
     msgp.mdata[1] = 3;
 
     //send ids to KDC and wait for reply
     msgsnd(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 0);
-    msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
-    
+    printf("A requests session key.\n");
+    msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 1, 0);
+    printf("A recieves session key.\n");
+
     int sessionKey = msgp.mdata[0] ^ sharedKey;
 
     msgp.mdata[0] = msgp.mdata[1];
     msgp.mdata[1] = 0;
 
     msgsnd(msqidB, &msgp, sizeof(msgp)-sizeof(long), 0);
-    msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
+    msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 1, 0);
 
     if(msgp.mdata[0] == 0 && msgp.mdata[1] == 0){
-        printf("B confirms request.");
+        printf("A recieves confirmation.\n");
     }
 
     pthread_exit(0);
@@ -56,7 +55,8 @@ void *ClientB(void* params){
     int msqidA = msgget(16777217, 0600 | IPC_CREAT);
 
     struct msg msgp;    
-    msgrcv(msqidB, &msgp, sizeof(msgp) - sizeof(long), 0, 0);
+    msgrcv(msqidB, &msgp, sizeof(msgp) - sizeof(long), 1, 0);
+    printf("B recieves session key.\n");
 
     int sessionKey = msgp.mdata[0] ^ sharedKey;
 
@@ -64,19 +64,23 @@ void *ClientB(void* params){
     msgp.mdata[1] = 0;
 
     msgsnd(msqidA, &msgp, sizeof(msgp)-sizeof(long), 0);
+    printf("B confirms receipt.\n");
 
     pthread_exit(0);
 }
 
 //the process for the KDC
 void *KDC(void* params){
+    int sharedKeys[] = {70, 45, 122, 60, 401};
+
     //open the mailboxes
     int msqidKDC = msgget(16777216, 0600 | IPC_CREAT);
     int msqidA = msgget(16777217, 0600 | IPC_CREAT);
     struct msg msgp;
 
     //wait for message from the first process
-    msgrcv(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 0, 0);
+    msgrcv(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 1, 0);
+    printf("KDC receives request for session key.\n");
 
     //generate a random session key
     int sessionKey = rand();
@@ -109,7 +113,7 @@ int main(int argc, char *argv[]){
         pthread_attr_init(&attr);
 
         /*create the intitial thread */
-    	// pthread_create(&tidKDC, &attr, KDC, NULL);
+    	pthread_create(&tidKDC, &attr, KDC, NULL);
 
         /*create the client threads */
     	pthread_create(&tidA, &attr, ClientA, NULL);
