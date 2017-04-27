@@ -34,6 +34,7 @@ void *ClientA(void* params){
     printf("A receives session key.\n");
 
     int sessionKey = msgp.mdata[0] ^ sharedKey;
+    printf("\t %d \n", sessionKey);
 
     msgp.mdata[0] = id;
 
@@ -59,6 +60,7 @@ void *ClientB(void* params){
     printf("B receives session key.\n");
 
     int sessionKey = msgp.mdata[1] ^ sharedKey;
+    printf("\t %d \n", sessionKey);
 
     msgp.mdata[0] = 0;
     msgp.mdata[1] = 0;
