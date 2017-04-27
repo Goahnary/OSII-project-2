@@ -30,7 +30,7 @@ void *ClientA(void* params){
     msgsnd(msqidKDC, &msgp, sizeof(msgp)-sizeof(long), 0);
     printf("A requests session key.\n");
     msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 1, 0);
-    printf("A recieves session key.\n");
+    printf("A receives session key.\n");
 
     int sessionKey = msgp.mdata[0] ^ sharedKey;
 
@@ -41,7 +41,7 @@ void *ClientA(void* params){
     msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 1, 0);
 
     if(msgp.mdata[0] == 0 && msgp.mdata[1] == 0){
-        printf("A recieves confirmation.\n");
+        printf("A receives confirmation.\n");
     }
 
     pthread_exit(0);
@@ -56,7 +56,7 @@ void *ClientB(void* params){
 
     struct msg msgp;    
     msgrcv(msqidB, &msgp, sizeof(msgp) - sizeof(long), 1, 0);
-    printf("B recieves session key.\n");
+    printf("B receives session key.\n");
 
     int sessionKey = msgp.mdata[0] ^ sharedKey;
 
