@@ -14,6 +14,7 @@ struct msg {
 //the process for client A
 void *ClientA(void* params){
     int sharedKey = 70;
+    int id = 0;
 
     //open the mailboxes
     int msqidA = msgget(16777217, 0600 | IPC_CREAT);
@@ -34,8 +35,7 @@ void *ClientA(void* params){
 
     int sessionKey = msgp.mdata[0] ^ sharedKey;
 
-    msgp.mdata[0] = msgp.mdata[1];
-    msgp.mdata[1] = 0;
+    msgp.mdata[0] = id;
 
     msgsnd(msqidB, &msgp, sizeof(msgp)-sizeof(long), 0);
     msgrcv(msqidA, &msgp, sizeof(msgp)-sizeof(long), 1, 0);
@@ -58,7 +58,7 @@ void *ClientB(void* params){
     msgrcv(msqidB, &msgp, sizeof(msgp) - sizeof(long), 1, 0);
     printf("B receives session key.\n");
 
-    int sessionKey = msgp.mdata[0] ^ sharedKey;
+    int sessionKey = msgp.mdata[1] ^ sharedKey;
 
     msgp.mdata[0] = 0;
     msgp.mdata[1] = 0;
