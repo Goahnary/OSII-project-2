@@ -1,6 +1,5 @@
 # CS445 Project 2 - Key Distribution Center Emulation
-
-Note:
+#### Noah Gary and Jared Prince
 
 You must run our program with gcc version 4.4 You can install it on a debian using: 
 
